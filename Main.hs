@@ -14,7 +14,7 @@ import Control.Applicative
 import Control.Monad (when)
 import Data.ByteString.Lazy as BL hiding (map, intersperse)
 import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.Attoparsec.Lazy as Atto hiding (Result, parseOnly)
+import qualified Data.Attoparsec.Lazy as LA hiding (Result, parseOnly)
 import Data.Attoparsec.ByteString.Char8 (endOfLine, sepBy)
 import Data.Attoparsec.Text 
 import qualified Data.HashMap.Lazy as HM
@@ -50,11 +50,11 @@ decodeStream bs = case decodeWith json bs of
     (Just x, xs) -> x:(decodeStream xs)
     (Nothing, _) -> []
 
-decodeWith :: (FromJSON a) => Atto.Parser Value -> BL.ByteString -> (Maybe a, BL.ByteString)
+decodeWith :: (FromJSON a) => LA.Parser Value -> BL.ByteString -> (Maybe a, BL.ByteString)
 decodeWith p s =
-    case Atto.parse p s of
-      Atto.Done r v -> f v r
-      Atto.Fail _ _ _ -> (Nothing, mempty)
+    case LA.parse p s of
+      LA.Done r v -> f v r
+      LA.Fail _ _ _ -> (Nothing, mempty)
   where f v' r = (\x -> case x of 
                       Success a -> (Just a, r)
                       _ -> (Nothing, r)) $ fromJSON v'
@@ -64,13 +64,13 @@ data Chunk = Pass Text | Expr KeyPath deriving (Show, Eq)
 type KeyPath = [Key]
 data Key = Key Text | Index Int deriving (Eq, Show)
 
--- evalText :: Value -> Chunk -> String
--- evalText v (Pass s) = s
--- evalText v (Expr s) = ngEvalToString v s
+evalText :: Value -> Chunk -> Text
+evalText v (Pass s) = s
+evalText v (Expr s) = eval v s
 
--- | function to evaluate an ng-expression and a object value context
--- e.g. Value -> "item.name" -> "John"
--- ngEvalToString :: Value -> String -> String
+eval :: Value -> KeyPath -> Text
+eval v ks = undefined
+
 -- ngEvalToString context exprString = valToString . ngExprEval (runParse ngExpr exprString) $ context
 
 parseText :: Text -> [Chunk]
