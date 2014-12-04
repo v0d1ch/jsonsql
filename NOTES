@@ -9,6 +9,50 @@ sqlite3
 - https://www.sqlite.org/lang_expr.html
 
 ------------------------------------------------------------------------
+Postgres
+
+
+A string constant in SQL is an arbitrary sequence of characters bounded by
+single quotes ('), for example 'This is a string'. To include a single-quote
+character within a string constant, write two adjacent single quotes, e.g.
+'Dianne''s horse'. Note that this is not the same as a double-quote character
+(").
+
+Two string constants that are only separated by whitespace with at least one
+newline are concatenated and effectively treated as if the string had been
+written as one constant. For example:
+
+SELECT 'foo'
+'bar';
+is equivalent to
+
+SELECT 'foobar';
+
+but
+
+SELECT 'foo'      'bar';
+
+is not valid syntax. (This slightly bizarre behavior is specified by SQL;
+PostgreSQL is following the standard.)
+
+PostgreSQL also accepts "escape" string constants, which are an extension to
+the SQL standard. An escape string constant is specified by writing the letter
+E (upper or lower case) just before the opening single quote, e.g. E'foo'.
+(When continuing an escape string constant across lines, write E only before
+the first opening quote.) Within an escape string, a backslash character (\)
+begins a C-like backslash escape sequence, in which the combination of
+backslash and following character(s) represents a special byte value. \b is a
+backspace, \f is a form feed, \n is a newline, \r is a carriage return, \t is a
+tab. Also supported are \digits, where digits represents an octal byte value,
+and \xhexdigits, where hexdigits represents a hexadecimal byte value. (It is
+your responsibility that the byte sequences you create are valid characters in
+the server character set encoding.) Any other character following a backslash
+is taken literally. Thus, to include a backslash character, write two
+backslashes (\\). Also, a single quote can be included in an escape string by
+writing \', in addition to the normal way of ''.
+
+
+
 MySQL
 
 A string is a sequence of bytes or characters, enclosed within either single
