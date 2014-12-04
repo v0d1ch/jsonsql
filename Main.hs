@@ -60,11 +60,11 @@ decodeWith p s =
                       _ -> (Nothing, r)) $ fromJSON v'
 
 
-data Chunk = PassThrough Text | Expression Text deriving (Show, Eq)
+data Chunk = Pass Text | Expr Text deriving (Show, Eq)
 
 -- evalText :: Value -> Chunk -> String
--- evalText v (PassThrough s) = s
--- evalText v (Expression s) = ngEvalToString v s
+-- evalText v (Pass s) = s
+-- evalText v (Expr s) = ngEvalToString v s
 
 -- | function to evaluate an ng-expression and a object value context
 -- e.g. Value -> "item.name" -> "John"
@@ -83,10 +83,10 @@ exprChunk = do
     try (char ':')
     x <- notChar ':'
     xs <- takeWhile1 identifierChar
-    return $ Expression $ T.singleton x <> xs
+    return $ Expr $ T.singleton x <> xs
 
 passThroughChunk :: Parser Chunk
-passThroughChunk = PassThrough <$> takeWhile1 (notInClass ":")
+passThroughChunk = Pass <$> takeWhile1 (notInClass ":")
 
 ------------------------------------------------------------------------
 -- Tests
@@ -94,6 +94,9 @@ passThroughChunk = PassThrough <$> takeWhile1 (notInClass ":")
 runTests = runTestTT tests
 
 tests = test [
-    "testOne"          ~: [PassThrough "Hello ", Expression "title"]   @=?   parseText "Hello :title"
+    "testOne"          
+        ~: [Pass "Hello ",Expr "title",assThrough ", "
+           ,Expr "year",Pass ", ",Expr "ratings.imdb",Pass ")"]
+        @=?   parseText "Hello :title, :year, :ratings.imdb)"
   ]
 
