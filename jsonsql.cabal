@@ -19,7 +19,7 @@ cabal-version:       >=1.10
 executable jsonsql
   main-is:             Main.hs
   build-depends:       base >=4.7 && <4.8
-                     , aeson
+                     , aeson >= 0.8.0.1
                      , unordered-containers 
                      , containers 
                      , text >= 1.1.0.0

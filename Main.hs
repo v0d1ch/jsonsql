@@ -66,12 +66,48 @@ data Key = Key Text | Index Int deriving (Eq, Show)
 
 evalText :: Value -> Chunk -> Text
 evalText v (Pass s) = s
-evalText v (Expr s) = eval v s
+evalText v (Expr ks) = eval ks v
 
-eval :: Value -> KeyPath -> Text
-eval v ks = undefined
+eval :: KeyPath -> Value -> Text
+eval ks v = valToText $ evalKeyPath ks v
 
--- ngEvalToString context exprString = valToString . ngExprEval (runParse ngExpr exprString) $ context
+-- evaluates the a JS key path against a Value context to a leaf Value
+evalKeyPath :: KeyPath -> Value -> Value
+evalKeyPath [] x@(String _) = x
+evalKeyPath [] x@Null = x
+evalKeyPath [] x@(Number _) = x
+evalKeyPath [] x@(Bool _) = x
+evalKeyPath [] x@(Object _) = x
+evalKeyPath [] x@(Array v) = 
+          let vs = V.toList v
+              xs = intersperse "," $ map (eval []) vs
+          in String . mconcat $ xs
+evalKeyPath (Key key:ks) (Object s) = 
+    case (HM.lookup key s) of
+        Just x          -> evalKeyPath ks x
+        Nothing -> Null
+evalKeyPath (Index idx:ks) (Array v) = 
+      let e = (V.!?) v idx
+      in case e of 
+        Just e' -> evalKeyPath ks e'
+        Nothing -> Null
+-- traverse array elements with additional keys
+evalKeyPath ks@(Key key:_) (Array v) = 
+      let vs = V.toList v
+      in String . mconcat . intersperse "," $ map (eval ks) vs
+evalKeyPath ((Index _):_) _ = Null
+evalKeyPath _ _ = Null
+
+valToText :: Value -> Text
+valToText (String x) = x
+valToText Null = "null"
+valToText (Bool True) = "t"
+valToText (Bool False) = "f"
+valToText (Number x) = 
+    case floatingOrInteger x of
+        Left float -> T.pack . show $ float
+        Right int -> T.pack . show $ int
+valToText (Object _) = "[Object]"
 
 parseText :: Text -> [Chunk]
 parseText = either error id . parseOnly (many textChunk)
