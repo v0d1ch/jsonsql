@@ -28,6 +28,7 @@ executable jsonsql
                      , vector >= 0.10.9.0
                      , scientific
                      , optparse-applicative
+                     , string-qq
                      , HUnit
 
   default-language:    Haskell2010

@@ -8,6 +8,7 @@ import qualified Data.Text.Encoding as T (decodeUtf8)
 import Data.List (intersperse)
 import qualified Data.List 
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy.IO as TL
 import Data.Maybe (catMaybes)
 import Control.Applicative
@@ -25,12 +26,21 @@ import qualified Data.Text.Lazy.Builder as B
 import qualified Data.Text.Lazy.Builder.Int as B
 import qualified Data.Text.Lazy.Builder.RealFloat as B
 import qualified Options.Applicative as O
+import Data.String.QQ
 import Test.HUnit 
 
-data Options = Options deriving Show
+data Options = Options {  
+      template :: Template
+    } deriving Show
+
+data Template = TemplateFile FilePath | TemplateText Text deriving (Show)
 
 parseOpts :: O.Parser Options
-parseOpts = pure Options 
+parseOpts = Options <$> (tmplText <|> tmplFile)
+
+tmplText = TemplateText . T.pack <$> O.argument O.str (O.metavar "TEMPLATE")
+tmplFile = TemplateFile 
+      <$> O.strOption (O.metavar "FILE" <> O.short 'f' <> O.help "Template file")
 
 opts = O.info (O.helper <*> parseOpts)
           (O.fullDesc 
@@ -38,11 +48,17 @@ opts = O.info (O.helper <*> parseOpts)
           <> O.header "jsonsql")
 
 main = do
-  Options <- O.execParser opts
+  Options tmpl <- O.execParser opts
+  template <- case tmpl of
+                  TemplateFile fp -> T.readFile fp
+                  TemplateText t -> return t
   x <- BL.getContents 
-  let xs :: [Value]
-      xs = decodeStream x
-  print xs      
+  let vs :: [Value]
+      vs = decodeStream x
+      chunks :: [Chunk] 
+      chunks = parseText template
+      results = mconcat $ map (evalText chunks) vs
+  TL.putStrLn . B.toLazyText $ results
 
 decodeStream :: (FromJSON a) => BL.ByteString -> [a]
 decodeStream bs = case decodeWith json bs of
@@ -64,9 +80,12 @@ data Chunk = Pass Text | Expr KeyPath deriving (Show, Eq)
 type KeyPath = [Key]
 data Key = Key Text | Index Int deriving (Eq, Show)
 
-evalText :: Value -> Chunk -> Text
-evalText v (Pass s) = s
-evalText v (Expr ks) = eval ks v
+evalText :: [Chunk] -> Value -> B.Builder
+evalText xs v = mconcat $ map (B.fromText . evalChunk v) xs
+
+evalChunk :: Value -> Chunk -> Text
+evalChunk v (Pass s) = s
+evalChunk v (Expr ks) = eval ks v
 
 eval :: KeyPath -> Value -> Text
 eval ks v = valToText $ evalKeyPath ks v
