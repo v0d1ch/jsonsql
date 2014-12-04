@@ -91,11 +91,9 @@ exprChunk = do
 passChunk :: Parser Chunk
 passChunk = Pass <$> takeWhile1 (notInClass ":")
 
--- key path expressions
-
 parseKeyPath :: Text -> KeyPath
 parseKeyPath s = case parseOnly pKeyPath s of
-    Left err -> error $ "Parse error " ++ err 
+    Left err -> error $ "Error parsing key path: " ++ T.unpack s ++ " error: " ++ err 
     Right res -> res
 
 pKeyPath :: Parser KeyPath
@@ -106,8 +104,6 @@ pKeyOrIndex = pIndex <|> pKey
 pKey = Key <$> takeWhile1 (notInClass " .[")
 
 pIndex = Index <$> decimal <* char ']'
-
-
 
 ------------------------------------------------------------------------
 -- Tests
