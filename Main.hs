@@ -74,7 +74,7 @@ data Chunk = Pass Text | Expr Text deriving (Show, Eq)
 parseText :: Text -> [Chunk]
 parseText = either error id . parseOnly (many textChunk)
 
-textChunk = exprChunk <|> passThroughChunk
+textChunk = exprChunk <|> passChunk
 
 identifierChar = inClass "a-zA-Z_."
 
@@ -85,8 +85,8 @@ exprChunk = do
     xs <- takeWhile1 identifierChar
     return $ Expr $ T.singleton x <> xs
 
-passThroughChunk :: Parser Chunk
-passThroughChunk = Pass <$> takeWhile1 (notInClass ":")
+passChunk :: Parser Chunk
+passChunk = Pass <$> takeWhile1 (notInClass ":")
 
 ------------------------------------------------------------------------
 -- Tests
@@ -95,8 +95,8 @@ runTests = runTestTT tests
 
 tests = test [
     "testOne"          
-        ~: [Pass "Hello ",Expr "title",assThrough ", "
+        ~: [Pass "VALUES (",Expr "title",Pass ", "
            ,Expr "year",Pass ", ",Expr "ratings.imdb",Pass ")"]
-        @=?   parseText "Hello :title, :year, :ratings.imdb)"
+        @=?   parseText "VALUES (:title, :year, :ratings.imdb)"
   ]
 
