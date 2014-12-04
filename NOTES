@@ -112,3 +112,46 @@ BLOB literals are string literals containing hexadecimal data and preceded by a
 single "x" or "X" character. Example: X'53514C697465'
 
 A literal value can also be the token "NULL".
+
+
+
+Real World Haskell
+
+A second problem involves escaping characters. What if you wanted to insert the
+string "I don't like 1"? SQL uses the single quote character to show the end of
+the field. Most SQL databases would require you to write this as 'I don''t like
+1'. But rules for other special characters such as backslashes differ between
+databases. Rather than trying to code this yourself, HDBC can handle it all for
+you. Let's look at an example. 4 comments
+
+
+
+
+http://book.realworldhaskell.org/read/efficient-file-processing-regular-expressions-and-file-name-matching.html
+
+-- file: ch08/GlobRegex.hs
+globToRegex' :: String -> String
+globToRegex' "" = ""
+
+globToRegex' ('*':cs) = ".*" ++ globToRegex' cs
+
+globToRegex' ('?':cs) = '.' : globToRegex' cs
+
+globToRegex' ('[':'!':c:cs) = "[^" ++ c : charClass cs
+globToRegex' ('[':c:cs)     = '['  :  c : charClass cs
+globToRegex' ('[':_)        = error "unterminated character class"
+
+globToRegex' (c:cs) = escape c ++ globToRegex' cs
+
+
+-- file: ch08/GlobRegex.hs
+escape :: Char -> String
+escape c | c `elem` regexChars = '\\' : [c]
+         | otherwise = [c]
+             where regexChars = "\\+()^$.{}]|"
+
+-- file: ch08/GlobRegex.hs
+charClass :: String -> String
+charClass (']':cs) = ']' : globToRegex' cs
+charClass (c:cs)   = c : charClass cs
+charClass []       = error "unterminated character class"

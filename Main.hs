@@ -118,15 +118,22 @@ evalKeyPath ((Index _):_) _ = Null
 evalKeyPath _ _ = Null
 
 valToText :: Value -> Text
-valToText (String x) = x
-valToText Null = "null"
-valToText (Bool True) = "t"
-valToText (Bool False) = "f"
+valToText (String x) = T.singleton '\'' 
+    <> (T.pack . escapeStringLiteral . T.unpack $ x)
+    <> T.singleton '\''
+valToText Null = "NULL"
+valToText (Bool True) = "TRUE"
+valToText (Bool False) = "FALSE"
 valToText (Number x) = 
     case floatingOrInteger x of
         Left float -> T.pack . show $ float
         Right int -> T.pack . show $ int
-valToText (Object _) = "[Object]"
+valToText x@(Object _) = error $ "Cannot interpolate " ++ show x
+
+escapeStringLiteral :: String -> String
+escapeStringLiteral ('\'':xs) = '\'': ('\'' : escapeStringLiteral xs)
+escapeStringLiteral (x:xs) = x : escapeStringLiteral xs
+escapeStringLiteral [] = []
 
 parseText :: Text -> [Chunk]
 parseText = either error id . parseOnly (many textChunk)
