@@ -60,7 +60,9 @@ decodeWith p s =
                       _ -> (Nothing, r)) $ fromJSON v'
 
 
-data Chunk = Pass Text | Expr Text deriving (Show, Eq)
+data Chunk = Pass Text | Expr KeyPath deriving (Show, Eq)
+type KeyPath = [Key]
+data Key = Key Text | Index Int deriving (Eq, Show)
 
 -- evalText :: Value -> Chunk -> String
 -- evalText v (Pass s) = s
@@ -83,10 +85,29 @@ exprChunk = do
     try (char ':')
     x <- notChar ':'
     xs <- takeWhile1 identifierChar
-    return $ Expr $ T.singleton x <> xs
+    let kp = parseKeyPath $ T.singleton x <> xs
+    return $ Expr kp
 
 passChunk :: Parser Chunk
 passChunk = Pass <$> takeWhile1 (notInClass ":")
+
+-- key path expressions
+
+parseKeyPath :: Text -> KeyPath
+parseKeyPath s = case parseOnly pKeyPath s of
+    Left err -> error $ "Parse error " ++ err 
+    Right res -> res
+
+pKeyPath :: Parser KeyPath
+pKeyPath = sepBy1 pKeyOrIndex (takeWhile1 $ inClass ".[")
+
+pKeyOrIndex = pIndex <|> pKey
+
+pKey = Key <$> takeWhile1 (notInClass " .[")
+
+pIndex = Index <$> decimal <* char ']'
+
+
 
 ------------------------------------------------------------------------
 -- Tests
@@ -95,8 +116,7 @@ runTests = runTestTT tests
 
 tests = test [
     "testOne"          
-        ~: [Pass "VALUES (",Expr "title",Pass ", "
-           ,Expr "year",Pass ", ",Expr "ratings.imdb",Pass ")"]
+        ~: [Pass "VALUES (",Expr [Key "title"],Pass ", ",Expr [Key "year"],Pass ", ",Expr [Key "ratings",Key "imdb"],Pass ")"]
         @=?   parseText "VALUES (:title, :year, :ratings.imdb)"
   ]
 
