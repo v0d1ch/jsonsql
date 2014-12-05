@@ -140,7 +140,7 @@ parseText = either error id . parseOnly (many textChunk)
 
 textChunk = exprChunk <|> passChunk
 
-identifierChar = inClass "a-zA-Z_."
+identifierChar = inClass "a-zA-Z_.[]0-9"
 
 exprChunk :: Parser Chunk
 exprChunk = do
@@ -176,5 +176,8 @@ tests = test [
     "testOne"          
         ~: [Pass "VALUES (",Expr [Key "title"],Pass ", ",Expr [Key "year"],Pass ", ",Expr [Key "ratings",Key "imdb"],Pass ")"]
         @=?   parseText "VALUES (:title, :year, :ratings.imdb)"
+  , "test complex key"
+        ~: [Pass "values (",Expr [Key "imdb"],Pass ", ",Expr [Key "versions",Key "Rental",Key "HD",Index 0],Pass ");"]
+        @=? parseText "values (:imdb, :versions.Rental.HD[0]);"
   ]
 
