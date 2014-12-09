@@ -79,7 +79,7 @@ INSERT into titles (title, year, rating, stars, created)
 VALUES ('Interstellar', 2014, 8.9, 'Matthew McConaughey,Anne Hathaway', DEFAULT);
 ```
 
-A key path can be followed by an array formatting expression:
+A key path that terminates in an array can be followed by an array formatting expression:
 
 ```
 {delimiter-string!prefix-sring!postfix-string}
