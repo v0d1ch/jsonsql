@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Main where
 import Data.Aeson
 import Data.Monoid
@@ -76,8 +76,14 @@ decodeWith p s =
                       _ -> (Nothing, r)) $ fromJSON v'
 
 
+data ArrayFormat = ArrayFormat {
+    arrDelimiter :: Text
+  , arrPrefixStr :: Text  -- can me mempty
+  , arrPostFixStr :: Text
+  } deriving (Show, Eq)
+
 data Chunk = Pass Text | Expr KeyPath deriving (Show, Eq)
-type KeyPath = [Key]
+data KeyPath = KeyPath [Key] ArrayFormat deriving (Show, Eq) -- Text fields are array item prefix and postfix strings, which is given at end
 data Key = Key Text | Index Int deriving (Eq, Show)
 
 evalText :: [Chunk] -> Value -> B.Builder
@@ -85,41 +91,47 @@ evalText xs v = mconcat $ map (B.fromText . evalChunk v) xs
 
 evalChunk :: Value -> Chunk -> Text
 evalChunk v (Pass s) = s
-evalChunk v (Expr ks) = eval ks v
+evalChunk v (Expr k) = evalToText k v
 
-eval :: KeyPath -> Value -> Text
-eval ks v = valToText $ evalKeyPath ks v
+evalToText :: KeyPath -> Value -> Text
+evalToText k v = valToText $ evalKeyPath k v
+
+evalToUnescapedText :: KeyPath -> Value -> Text
+evalToUnescapedText k v = valToUnescapedText $ evalKeyPath k v
 
 -- evaluates the a JS key path against a Value context to a leaf Value
 evalKeyPath :: KeyPath -> Value -> Value
-evalKeyPath [] x@(String _) = x
-evalKeyPath [] x@Null = x
-evalKeyPath [] x@(Number _) = x
-evalKeyPath [] x@(Bool _) = x
-evalKeyPath [] x@(Object _) = x
-evalKeyPath [] x@(Array v) = 
-          let vs = V.toList v
-              xs = intersperse "," $ map (eval []) vs
-          in String . mconcat $ xs
-evalKeyPath (Key key:ks) (Object s) = 
+evalKeyPath (KeyPath [] _) x@(String _) = x
+evalKeyPath (KeyPath [] _) x@Null = x
+evalKeyPath (KeyPath [] _) x@(Number _) = x
+evalKeyPath (KeyPath [] _) x@(Bool _) = x
+evalKeyPath (KeyPath [] _) x@(Object _) = x
+evalKeyPath (KeyPath (Key key:ks) a) (Object s) = 
     case (HM.lookup key s) of
-        Just x          -> evalKeyPath ks x
+        Just x          -> evalKeyPath (KeyPath ks a) x
         Nothing -> Null
-evalKeyPath (Index idx:ks) (Array v) = 
+evalKeyPath (KeyPath (Index idx:ks) a) (Array v) = 
       let e = (V.!?) v idx
       in case e of 
-        Just e' -> evalKeyPath ks e'
-        Nothing -> Null
+        Just e' -> evalKeyPath (KeyPath ks a) e'
+        Nothing -> Null  
 -- traverse array elements with additional keys
-evalKeyPath ks@(Key key:_) (Array v) = 
+evalKeyPath k@(KeyPath (key:_) ArrayFormat {..}) (Array v) = 
       let vs = V.toList v
-      in String . mconcat . intersperse "," $ map (eval ks) vs
-evalKeyPath ((Index _):_) _ = Null
+          f =  (\v -> escapeText $ arrPrefixStr <> evalToUnescapedText k v <> arrPostFixStr)
+      in String . mconcat . intersperse arrDelimiter $ map f vs
+evalKeyPath (KeyPath (Index _:_) _ ) _ = Null
 evalKeyPath _ _ = Null
+
+valToUnescapedText :: Value -> Text
+valToUnescapedText (String x) = x
+valToUnescapedText x = valToText x
+
+escapeText = T.pack . escapeStringLiteral . T.unpack 
 
 valToText :: Value -> Text
 valToText (String x) = T.singleton '\'' 
-    <> (T.pack . escapeStringLiteral . T.unpack $ x)
+    <> (escapeText x)
     <> T.singleton '\''
 valToText Null = "NULL"
 valToText (Bool True) = "TRUE"
@@ -147,19 +159,37 @@ exprChunk = do
     try (char ':')
     x <- notChar ':'
     xs <- takeWhile1 identifierChar
-    let kp = parseKeyPath $ T.singleton x <> xs
+    arrFormat <- pArrayFormat
+    let kp = parseKeyPath (T.singleton x <> xs) arrFormat
     return $ Expr kp
 
 passChunk :: Parser Chunk
 passChunk = Pass <$> takeWhile1 (notInClass ":")
 
-parseKeyPath :: Text -> KeyPath
-parseKeyPath s = case parseOnly pKeyPath s of
+parseKeyPath :: Text -> ArrayFormat -> KeyPath
+parseKeyPath s a = case parseOnly pKeys s of
     Left err -> error $ "Error parsing key path: " ++ T.unpack s ++ " error: " ++ err 
-    Right res -> res
+    Right res -> KeyPath res a
 
-pKeyPath :: Parser KeyPath
-pKeyPath = sepBy1 pKeyOrIndex (takeWhile1 $ inClass ".[")
+pKeys :: Parser [Key]
+pKeys = do
+    keys <- sepBy1 pKeyOrIndex (takeWhile1 $ inClass ".[") 
+    return keys 
+
+-- | syntax is {delimiter-string!prefix-string!postfix-string}
+-- immediately after last key
+-- e.g. {,!!}
+pArrayFormat :: Parser ArrayFormat
+pArrayFormat = do 
+  try (do
+       char '{'
+       delimiter <- T.pack <$> manyTill anyChar (char '!')
+       pre <- T.pack <$> manyTill anyChar (char '!')
+       post <- T.pack <$> manyTill anyChar (char '}')
+       return $ ArrayFormat delimiter pre post)
+  <|> pure defArrayFormat
+
+defArrayFormat = ArrayFormat "," "" ""
 
 pKeyOrIndex = pIndex <|> pKey
 
@@ -174,10 +204,10 @@ runTests = runTestTT tests
 
 tests = test [
     "testOne"          
-        ~: [Pass "VALUES (",Expr [Key "title"],Pass ", ",Expr [Key "year"],Pass ", ",Expr [Key "ratings",Key "imdb"],Pass ")"]
+        ~: []
         @=?   parseText "VALUES (:title, :year, :ratings.imdb)"
   , "test complex key"
-        ~: [Pass "values (",Expr [Key "imdb"],Pass ", ",Expr [Key "versions",Key "Rental",Key "HD",Index 0],Pass ");"]
+        ~: []
         @=? parseText "values (:imdb, :versions.Rental.HD[0]);"
   ]
 
