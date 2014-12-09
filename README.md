@@ -58,4 +58,7 @@ VALUES ('Interstellar', 2014, 8.9,
 '$Matthew McConaughey;$Anne Hathaway', DEFAULT);
 ```
 
+Adding a prefix and postfix may be useful if you want to mark strings
+for downstream pipeline processing with tools like `sed`.
+
 
