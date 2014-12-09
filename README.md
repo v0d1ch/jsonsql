@@ -6,11 +6,12 @@ SQL statements to pass to DB client programs like `psql`, `mysql`, and
 alternative to writing ad-hoc, monolithic programs with database and ORM
 libraries. 
 
-Interpolation syntax
+A template file with this interpolation syntax:
 
-  INSERT INTO titles (title, rating, year) VALUES (:title, :ratings.imdb, :year);
+    INSERT into titles (title, year, rating, created) 
+    VALUES (:title, :year, :ratings.imdb, DEFAULT);
 
-With input JSON
+combined with this input JSON
 
 ```json
 {
@@ -41,7 +42,10 @@ With input JSON
 
 generates this output:
 
-  INSERT INTO titles (title, rating, year) VALUES ('Interstellar', 8.9, 2014);
+    INSERT into titles (title, year, rating, created)
+    VALUES ('Terminator 2: ''Judgment Day''', 1991, 8.5, DEFAULT);
+    INSERT into titles (title, year, rating, created)
+    VALUES ('Interstellar', 2014, 8.9, DEFAULT);
 
 ## Usage
 
