@@ -11,7 +11,7 @@ A template file with this interpolation syntax:
     INSERT into titles (title, year, rating, created) 
     VALUES (:title, :year, :ratings.imdb, DEFAULT);
 
-combined with this input JSON
+combined with this input JSON on STDIN
 
 ```json
 {
