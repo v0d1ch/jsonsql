@@ -19,7 +19,9 @@ generates
 
 ## Array joining
 
-If a key path evaluates to an array of values, the values are converted into strings, joined by a delimiter, and then output as a string. The default delimiter is a comma:
+If a key path evaluates to an array of values, the values are converted
+into strings, joined by a delimiter, and then output as a string. The
+default delimiter is a comma:
 
 ```
 INSERT into titles (title, year, rating, stars, created) 
