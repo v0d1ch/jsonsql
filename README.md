@@ -28,13 +28,18 @@ A key path can be followed by an array formatting expression:
 
 template
 ```
-INSERT into titles (title, year, rating, stars, created) VALUES (:title, :year, :ratings.imdb, :stars.name{;!$!}, DEFAULT);
+INSERT into titles (title, year, rating, stars, created) 
+VALUES (:title, :year, :ratings.imdb, :stars.name{;!$!}, DEFAULT);
 ```
 
 output:
 ```
-INSERT into titles (title, year, rating, stars, created) VALUES ('Terminator 2: ''Judgment Day''', 1991, 8.5, '$Arnold Schwarzenegger;$Linda Hamilton', DEFAULT);
-INSERT into titles (title, year, rating, stars, created) VALUES ('Interstellar', 2014, 8.9, '$Matthew McConaughey;$Anne Hathaway', DEFAULT);
+INSERT into titles (title, year, rating, stars, created) 
+VALUES ('Terminator 2: ''Judgment Day''', 1991, 8.5, 
+'$Arnold Schwarzenegger;$Linda Hamilton', DEFAULT);
+INSERT into titles (title, year, rating, stars, created) 
+VALUES ('Interstellar', 2014, 8.9, 
+'$Matthew McConaughey;$Anne Hathaway', DEFAULT);
 ```
 
 
