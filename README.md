@@ -17,6 +17,20 @@ generates
   INSERT INTO titles (title, rating, year) VALUES ('Interstellar', 8.9, 2014);
   
 
+## Usage
+
+
+```
+jsonsql
+
+Usage: jsonsql (TEMPLATE | -f FILE)
+  Inject JSON into SQL template strings
+
+Available options:
+  -h,--help                Show this help text
+  -f FILE                  Template file
+```
+
 ## Array joining
 
 If a key path evaluates to an array of values, the values are converted
