@@ -10,12 +10,38 @@ Interpolation syntax
 
   INSERT INTO titles (title, rating, year) VALUES (:title, :ratings.imdb, :year);
 
-  With input JSON
+With input JSON
 
-generates
+```json
+{
+  "title": "Terminator 2: 'Judgment Day'",
+  "year": 1991,
+  "stars": [
+    {"name": "Arnold Schwarzenegger"},
+    {"name": "Linda Hamilton"}
+  ],
+  "ratings": {
+    "imdb": 8.5
+  },
+  "created": "2014-12-04T10:10:10Z"
+  
+}
+{
+  "title": "Interstellar",
+  "year": 2014,
+  "stars": [
+    {"name":"Matthew McConaughey"},
+    {"name":"Anne Hathaway"}
+  ],
+  "ratings": {
+    "imdb": 8.9
+  }
+}
+```
+
+generates this output:
 
   INSERT INTO titles (title, rating, year) VALUES ('Interstellar', 8.9, 2014);
-  
 
 ## Usage
 
