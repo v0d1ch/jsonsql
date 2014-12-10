@@ -86,7 +86,7 @@ A key path that terminates in an array can be followed by an array formatting ex
 ```
 
 
-template
+template:
 ```
 INSERT into titles (title, year, rating, stars, created) 
 VALUES (:title, :year, :ratings.imdb, :stars.name{;!$!$}, DEFAULT);
@@ -104,4 +104,11 @@ Adding a prefix and postfix may be useful if you want to mark strings
 for downstream pipeline processing with tools like `sed` before reaching
 the database.
 
+The usefulness of this feature may be obscure. But the author needed it to
+change an array of strings like `["apple","banana","pear"]` into a string field
+containing a series integer IDs like `'1,2,3'`. This type of field was then 
+indexed by the Sphinx search engine in multi-valued attribute.
 
+## Author
+
+* Daniel Choi <dhchoi@gmail.com>
