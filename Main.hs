@@ -119,7 +119,7 @@ evalKeyPath k@(KeyPath _ ArrayFormat {..}) (Array v) =
       let vs = V.toList v
           f =  (\v' -> escapeText $ arrPrefixStr <> evalToUnescapedText k v' <> arrPostFixStr)
           result = mconcat . intersperse arrDelimiter $ map f vs 
-      in if result == mempty then Null else (String result)
+      in (String result)
 evalKeyPath (KeyPath (Index _:_) _ ) _ = Null
 evalKeyPath _ _ = Null
 
