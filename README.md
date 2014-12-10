@@ -106,8 +106,8 @@ the database.
 
 The usefulness of this feature may be obscure. But the author needed it to
 change an array of strings like `["apple","banana","pear"]` into a string field
-containing a series integer IDs like `'1,2,3'`. This type of field was then 
-indexed by the Sphinx search engine in multi-valued attribute.
+containing a series of integer IDs like `'1,2,3'`. This type of field was then 
+indexed by the Sphinx search engine in a multi-valued attribute.
 
 ## Author
 
