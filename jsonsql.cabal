@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                jsonsql
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            Interpolate JSON object values into SQL strings
 -- description:         
 homepage:            https://github.com/danchoi/jsonsql
@@ -18,7 +18,7 @@ cabal-version:       >=1.10
 
 executable jsonsql
   main-is:             Main.hs
-  build-depends:       base >=4.7 && <4.8
+  build-depends:       base >=4.6 && <4.8
                      , aeson >= 0.8.0.1
                      , unordered-containers 
                      , containers 
