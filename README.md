@@ -82,32 +82,22 @@ VALUES ('Interstellar', 2014, 8.9, 'Matthew McConaughey,Anne Hathaway', DEFAULT)
 A key path that terminates in an array can be followed by an array formatting expression:
 
 ```
-{delimiter-string!prefix-sring!postfix-string}
+:{key-path}[{delimiter-string}]
 ```
-
 
 template:
 ```
 INSERT into titles (title, year, rating, stars, created) 
-VALUES (:title, :year, :ratings.imdb, :stars.name{;!$!$}, DEFAULT);
+VALUES (:title, :year, :ratings.imdb, :stars.name[;], DEFAULT);
 ```
 
 output:
 ```
 INSERT into titles (title, year, rating, stars, created)
-VALUES ('Terminator 2: ''Judgment Day''', 1991, 8.5, '$Arnold Schwarzenegger$;$Linda Hamilton$', DEFAULT);
+VALUES ('Terminator 2: ''Judgment Day''', 1991, 8.5, 'Arnold Schwarzenegger;Linda Hamilton', DEFAULT);
 INSERT into titles (title, year, rating, stars, created)
-VALUES ('Interstellar', 2014, 8.9, '$Matthew McConaughey$;$Anne Hathaway$', DEFAULT);
+VALUES ('Interstellar', 2014, 8.9, 'Matthew McConaughey;Anne Hathaway', DEFAULT);
 ```
-
-Adding a prefix and postfix may be useful if you want to mark strings
-for downstream pipeline processing with tools like `sed` before reaching
-the database.
-
-The usefulness of this feature may be obscure. But the author needed it to
-change an array of strings like `["apple","banana","pear"]` into a string field
-containing a series of integer IDs like `'1,2,3'`. This type of field was then 
-indexed by the Sphinx search engine in a multi-valued attribute.
 
 ## Author
 

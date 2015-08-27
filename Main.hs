@@ -78,8 +78,6 @@ decodeWith p s =
 
 data ArrayFormat = ArrayFormat {
     arrDelimiter :: Text
-  , arrPrefixStr :: Text  -- can me mempty
-  , arrPostFixStr :: Text
   } deriving (Show, Eq)
 
 data Chunk = Pass Text | Expr KeyPath deriving (Show, Eq)
@@ -117,7 +115,7 @@ evalKeyPath (KeyPath (Index idx:ks) a) (Array v) =
         Nothing -> Null  
 evalKeyPath k@(KeyPath _ ArrayFormat {..}) (Array v) = 
       let vs = V.toList v
-          f =  (\v' -> escapeText $ arrPrefixStr <> evalToUnescapedText k v' <> arrPostFixStr)
+          f =  (\v' -> escapeText $ evalToUnescapedText k v')
           result = mconcat . intersperse arrDelimiter $ map f vs 
       in (String result)
 evalKeyPath (KeyPath (Index _:_) _ ) _ = Null
@@ -176,20 +174,19 @@ pKeys = do
     keys <- sepBy1 pKeyOrIndex (takeWhile1 $ inClass ".[") 
     return keys 
 
--- | syntax is {delimiter-string!prefix-string!postfix-string}
+-- | syntax is {delimiter-string}
 -- immediately after last key
 -- e.g. {,!!}
 pArrayFormat :: Parser ArrayFormat
 pArrayFormat = do 
+  let leftDelim = '['
+      rightDelim = ']'
   try (do
-       char '{'
-       delimiter <- T.pack <$> manyTill anyChar (char '!')
-       pre <- T.pack <$> manyTill anyChar (char '!')
-       post <- T.pack <$> manyTill anyChar (char '}')
-       return $ ArrayFormat delimiter pre post)
-  <|> pure defArrayFormat
-
-defArrayFormat = ArrayFormat "," "" ""
+       char leftDelim
+       delimiter <- T.pack <$> manyTill anyChar (char rightDelim)
+       char rightDelim
+       return $ ArrayFormat delimiter)
+  <|> pure (ArrayFormat ",")  -- default array format
 
 pKeyOrIndex = pIndex <|> pKey
 
