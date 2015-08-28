@@ -100,6 +100,7 @@ VALUES ('Interstellar', '[{"name":"Matthew McConaughey"},{"name":"Anne Hathaway"
 
 To interpolate the base object as a literal JSON string, use `:.` as the keypath.
 
+Do NOT put quotes around the placeholder for a literal JSON interpolation.
 
 
 ## Author
