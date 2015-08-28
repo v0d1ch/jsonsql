@@ -156,7 +156,7 @@ escapeStringLiteral [] = []
 
 literalJSON :: Value -> Text
 literalJSON x = 
-    let t = T.decodeUtf8 . Prelude.head . BL.toChunks. encode $ x
+    let t = mconcat . map T.decodeUtf8 . BL.toChunks. encode $ x
     in valToText . String $ t
 
 parseText :: Text -> [Chunk]
