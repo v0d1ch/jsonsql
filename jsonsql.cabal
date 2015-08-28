@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                jsonsql
-version:             0.1.2.0
+version:             0.1.2.1
 synopsis:            Interpolate JSON object values into SQL strings
 -- description:         
 homepage:            https://github.com/danchoi/jsonsql
