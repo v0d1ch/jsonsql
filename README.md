@@ -47,6 +47,12 @@ generates this output:
     INSERT into titles (title, year, rating, created)
     VALUES ('Interstellar', 2014, 8.9, DEFAULT);
 
+## Install
+
+
+    cabal install jsonsql
+
+
 ## Usage
 
 
