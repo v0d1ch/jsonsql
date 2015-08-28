@@ -18,6 +18,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Attoparsec.Lazy as LA hiding (Result, parseOnly)
 import Data.Attoparsec.ByteString.Char8 (endOfLine, sepBy)
 import Data.Attoparsec.Text 
+import qualified Data.Attoparsec.Text as AttoT
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.Vector as V
 import Data.Scientific 
@@ -58,7 +59,8 @@ main = do
       chunks :: [Chunk] 
       chunks = parseText template
       results = mconcat $ map (evalText chunks) vs
-  TL.putStrLn . B.toLazyText $ results
+  TL.putStr . B.toLazyText $ results
+
 
 decodeStream :: (FromJSON a) => BL.ByteString -> [a]
 decodeStream bs = case decodeWith json bs of
@@ -76,16 +78,17 @@ decodeWith p s =
                       _ -> (Nothing, r)) $ fromJSON v'
 
 
-data ArrayFormat = ArrayFormat {
-    arrDelimiter :: Text
-  } deriving (Show, Eq)
+data ArrayFormat = ArrayFormat Text deriving (Show, Eq)
 
 data Chunk = Pass Text | Expr KeyPath deriving (Show, Eq)
-data KeyPath = KeyPath [Key] ArrayFormat deriving (Show, Eq) -- Text fields are array item prefix and postfix strings, which is given at end
-data Key = Key Text | Index Int deriving (Eq, Show)
+data KeyPath = KeyPath [Key] (Maybe ArrayFormat) 
+      deriving (Show, Eq) 
+data Key = Key Text | Index Int | RootKey deriving (Eq, Show)
 
 evalText :: [Chunk] -> Value -> B.Builder
-evalText xs v = mconcat $ map (B.fromText . evalChunk v) xs
+evalText xs v = 
+    let line = mconcat $ map (B.fromText . evalChunk v) xs
+    in line <> B.fromText "\n"
 
 evalChunk :: Value -> Chunk -> Text
 evalChunk v (Pass s) = s
@@ -99,11 +102,12 @@ evalToUnescapedText k v = valToUnescapedText $ evalKeyPath k v
 
 -- evaluates the a JS key path against a Value context to a leaf Value
 evalKeyPath :: KeyPath -> Value -> Value
+evalKeyPath (KeyPath [RootKey] _) x = x -- print the root object
 evalKeyPath (KeyPath [] _) x@(String _) = x
 evalKeyPath (KeyPath [] _) x@Null = x
 evalKeyPath (KeyPath [] _) x@(Number _) = x
 evalKeyPath (KeyPath [] _) x@(Bool _) = x
-evalKeyPath (KeyPath [] _) x@(Object _) = x
+evalKeyPath (KeyPath [] _) x@(Object _) = x -- print object
 evalKeyPath (KeyPath (Key key:ks) a) (Object s) = 
     case (HM.lookup key s) of
         Just x          -> evalKeyPath (KeyPath ks a) x
@@ -113,11 +117,14 @@ evalKeyPath (KeyPath (Index idx:ks) a) (Array v) =
       in case e of 
         Just e' -> evalKeyPath (KeyPath ks a) e'
         Nothing -> Null  
-evalKeyPath k@(KeyPath _ ArrayFormat {..}) (Array v) = 
+evalKeyPath (KeyPath [] Nothing) x@(Array _) = x  -- print literal object
+evalKeyPath (KeyPath [] (Just (ArrayFormat a))) (Array v) = 
       let vs = V.toList v
-          f =  (\v' -> escapeText $ evalToUnescapedText k v')
-          result = mconcat . intersperse arrDelimiter $ map f vs 
-      in (String result)
+      in String $ mconcat . intersperse a $ map valToUnescapedText $ vs 
+evalKeyPath k@(KeyPath _ a) (Array v) = 
+      let vs = V.toList v
+          f = evalKeyPath k
+      in evalKeyPath (KeyPath [] a) (Array $ V.fromList $ map f vs)
 evalKeyPath (KeyPath (Index _:_) _ ) _ = Null
 evalKeyPath _ _ = Null
 
@@ -138,12 +145,19 @@ valToText (Number x) =
     case floatingOrInteger x of
         Left float -> T.pack . show $ float
         Right int -> T.pack . show $ int
-valToText x@(Object _) = error $ "Cannot interpolate " ++ show x
+valToText x@(Object _) = literalJSON x
+valToText x@(Array _) = literalJSON x
 
 escapeStringLiteral :: String -> String
 escapeStringLiteral ('\'':xs) = '\'': ('\'' : escapeStringLiteral xs)
 escapeStringLiteral (x:xs) = x : escapeStringLiteral xs
 escapeStringLiteral [] = []
+
+
+literalJSON :: Value -> Text
+literalJSON x = 
+    let t = T.decodeUtf8 . Prelude.head . BL.toChunks. encode $ x
+    in valToText . String $ t
 
 parseText :: Text -> [Chunk]
 parseText = either error id . parseOnly (many textChunk)
@@ -156,7 +170,7 @@ exprChunk :: Parser Chunk
 exprChunk = do
     try (char ':')
     x <- notChar ':'
-    xs <- takeWhile1 identifierChar
+    xs <- AttoT.takeWhile identifierChar
     arrFormat <- pArrayFormat
     let kp = parseKeyPath (T.singleton x <> xs) arrFormat
     return $ Expr kp
@@ -164,29 +178,33 @@ exprChunk = do
 passChunk :: Parser Chunk
 passChunk = Pass <$> takeWhile1 (notInClass ":")
 
-parseKeyPath :: Text -> ArrayFormat -> KeyPath
+parseKeyPath :: Text -> Maybe ArrayFormat -> KeyPath
 parseKeyPath s a = case parseOnly pKeys s of
     Left err -> error $ "Error parsing key path: " ++ T.unpack s ++ " error: " ++ err 
     Right res -> KeyPath res a
 
 pKeys :: Parser [Key]
 pKeys = do
-    keys <- sepBy1 pKeyOrIndex (takeWhile1 $ inClass ".[") 
+    -- if the first character is '.', then it's an empty keypath
+    -- which evaluates to the whole objject
+    keys <- rootKey <|> (sepBy1 pKeyOrIndex (takeWhile1 $ inClass ".["))
     return keys 
 
--- | syntax is {delimiter-string}
--- immediately after last key
--- e.g. {,!!}
-pArrayFormat :: Parser ArrayFormat
+rootKey :: Parser [Key]
+rootKey = char '.' >> return [RootKey]
+
+-- | syntax is [delimiter-string] immediately after last key
+
+pArrayFormat :: Parser (Maybe ArrayFormat)
 pArrayFormat = do 
-  let leftDelim = '['
-      rightDelim = ']'
+  let leftDelim = '<'
+      rightDelim = '>'
   try (do
        char leftDelim
        delimiter <- T.pack <$> manyTill anyChar (char rightDelim)
-       char rightDelim
-       return $ ArrayFormat delimiter)
-  <|> pure (ArrayFormat ",")  -- default array format
+       -- char rightDelim
+       return . Just $ ArrayFormat delimiter)
+  <|> pure Nothing
 
 pKeyOrIndex = pIndex <|> pKey
 
