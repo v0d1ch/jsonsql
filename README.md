@@ -1,5 +1,5 @@
 # jsonsql
-
+### NOTE: This fork will try to implement selects and joins too
 Interpolates JSON data into SQL strings from the command line. For generating
 SQL statements to pass to DB client programs like `psql`, `mysql`, and
 `sqlite3` via Unix pipelines or shell scripts. A faster, lighter-weight
